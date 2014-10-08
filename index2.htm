@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<!-- saved from url=(0040)http://bl.ocks.org/mbostock/raw/1804919/ -->
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <style>
+circle {
+  stroke: #fff;
+}
+
+
+circle:hover {
+  stroke: #F00;
+  opacity: 1;
+}
+
+
+.d3-tip {
+  line-height: 1;
+  padding: 7px;
+  background: #EEE;
+  color: #444;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: verdana;
+
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 14px;
+  width: 100%;
+  line-height: 1;
+  color: #f00;
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+h1{
+  font-family: fantasy;
+font-size: 40PX;
+background-color: burlywood;
+padding: 8PX;
+
+}
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+
+form {
+  padding: 10px;
+  background-color: #eee;
+  text-align: center;
+}
+    </style>
+  </head>
+  <body>
+    <script src="d3.v3.min.js"></script>
+    <script src="jquery-2.1.1.min.js"></script>
+    <script src="carreteras.js"></script>
+    <div id="option">
+  <center><h1 > CASETO-MATIC</h2></center>
+  <center>
+    <iframe width='90%' height='520' frameborder='0' src='http://rusosnith.cartodb.com/viz/4dee11c2-4998-11e4-bcf2-0e9d821ea90d/embed_map' allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>
+</center>
+  <form >
+<input name="updateButton1" 
+                 type="button" 
+                value="IAVE, Color: precio/km, Radio: longitud" 
+                onclick="updateNodes1()"> 
+<input name="updateButton2" 
+                 type="button" 
+                value="IAVE, Color: Operador, Radio: Precio/km" 
+                onclick="updateNodes2()" >
+ <input name="updateButton3" 
+                 type="button" 
+                value="Pub-Priv, Color: IAve, Radio: Precio/km" 
+                onclick="updateNodes3()" >
+</form>
+</div>
+    <script>
+var width = 960,
+  height = 400,
+  padding = 30, // separation between nodes
+  maxRadius = 50;
+var opcion;
+var color1 = d3.scale.linear() // VER SI PODEMOS SACAR EL MIN Y EL MAX DE UN SUBARRAY
+  .domain([1,2.5])
+  .range(["blue","red"]);
+var color2 = d3.scale.category20();
+var color3 = d3.scale.linear()
+  .domain([0,1])
+  .range(["blue","red"]);
+var xPosGroup = d3.scale.ordinal();
+var nodes;
+
+updateNodes1();
+
+
+
+/* Initialize tooltip */
+ 
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    return d.tooltip;
+  })
+
+
+function updateNodes1(){
+  $("svg").remove();
+  updateGrouping(2);
+  nodes = datCar.map(function(d,e) {
+    if(datCar[e].iave == "SI") {
+      datCar[e].iave = 1;
+    }else{
+      datCar[e].iave = 0;
+    }
+    if(datCar[e].publico == "true") {
+      datCar[e].publico = 1;
+    }else{
+      datCar[e].publico = 0;
+    }
+    return { // agrupa por iave si/no  color =precio/k 
+      radius: datCar[e].longitud_km/5,
+      nombre: datCar[e].autopista,
+      typeColor: color1(datCar[e].precio_km),
+      cx: xPosGroup(datCar[e].iave),
+      cy: height / 2,
+    tooltip: datCar[e].autopista 
+
+    };
+  });
+  function updateGrouping(cantidad) {
+    xPosGroup.domain(d3.range(cantidad))
+      .rangePoints([0, width], 1);
+  }
+  var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(0)
+    .charge(0)
+    .on("tick", tick)
+    .start();
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+  var mainNode = svg.selectAll(".mainNode")
+    .data(nodes)
+    .enter().append("g")
+    .attr("class","mainNode")
+    .append("circle")
+    .attr("r", function(d) { return d.radius; })
+    .attr("id",function(d) { return d.nombre; })
+    .style("fill", function(d) { return d.typeColor; })
+        .on('mouseover', tip.show)
+  .on('mouseout', tip.hide);
+
+  function tick(e) {
+    svg.selectAll("g")
+      .each(gravity(.05 * e.alpha))
+      .each(collide(.1))
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")";
+      });
+  }
+  // Move nodes toward cluster focus.
+  function gravity(alpha) {
+    return function(d) {
+      d.y += (d.cy - d.y) * alpha;
+      d.x += (d.cx - d.x) * alpha;
+    };
+  }
+  // Resolve collisions between nodes.
+  function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function(d) {
+      var r = d.radius + maxRadius + padding,
+          nx1 = d.x - r,
+          nx2 = d.x + r,
+          ny1 = d.y - r,
+          ny2 = d.y + r;
+      quadtree.visit(function(quad, x1, y1, x2, y2) {
+        if (quad.point && (quad.point !== d)) {
+          var x = d.x - quad.point.x,
+              y = d.y - quad.point.y,
+              l = Math.sqrt(x * x + y * y),
+              r = d.radius + quad.point.radius + (d.color !== quad.point.color) * padding;
+          if (l < r) {
+            l = (l - r) / l * alpha;
+            d.x -= x *= l;
+            d.y -= y *= l;
+            quad.point.x += x;
+            quad.point.y += y;
+          }
+        }
+        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+      });
+    };
+  }
+}
+
+function updateNodes2(){
+  $("svg").remove();
+  updateGrouping(2);
+  nodes = datCar.map(function(d,e) {
+    if(datCar[e].iave == "SI") {
+      datCar[e].iave = 1;
+    }else{
+      datCar[e].iave = 0;
+    }
+    if(datCar[e].publico == "true") {
+      datCar[e].publico = 1;
+    }else{
+      datCar[e].publico = 0;
+    }
+    return { // agrupa por iave si/no  color =operador 
+      radius: datCar[e].precio_km*10,
+      nombre: datCar[e].autopista,
+      typeColor: color2(datCar[e].operador),
+      cx: xPosGroup(datCar[e].iave),
+      cy: height / 2,
+      tooltip: datCar[e].autopista 
+
+    };
+  });
+  function updateGrouping(cantidad) {
+    xPosGroup.domain(d3.range(cantidad))
+      .rangePoints([0, width], 1);
+  }
+  var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(0)
+    .charge(0)
+    .on("tick", tick)
+    .start();
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+    svg.call(tip)
+
+
+  var mainNode = svg.selectAll(".mainNode")
+    .data(nodes)
+    .enter().append("g")
+    .attr("class","mainNode")
+    .append("circle")
+    .attr("r", function(d) { return d.radius; })
+    .attr("id",function(d) { return d.nombre; })
+    .style("fill", function(d) { return d.typeColor; })
+      .on('mouseover', tip.show)
+  .on('mouseout', tip.hide);
+
+  function tick(e) {
+    svg.selectAll("g")
+      .each(gravity(.05 * e.alpha))
+      .each(collide(.1))
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")";
+      });
+  }
+
+
+  // Move nodes toward cluster focus.
+  function gravity(alpha) {
+    return function(d) {
+      d.y += (d.cy - d.y) * alpha;
+      d.x += (d.cx - d.x) * alpha;
+    };
+  }
+  // Resolve collisions between nodes.
+  function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function(d) {
+      var r = d.radius + maxRadius + padding,
+          nx1 = d.x - r,
+          nx2 = d.x + r,
+          ny1 = d.y - r,
+          ny2 = d.y + r;
+      quadtree.visit(function(quad, x1, y1, x2, y2) {
+        if (quad.point && (quad.point !== d)) {
+          var x = d.x - quad.point.x,
+              y = d.y - quad.point.y,
+              l = Math.sqrt(x * x + y * y),
+              r = d.radius + quad.point.radius + (d.color !== quad.point.color) * padding;
+          if (l < r) {
+            l = (l - r) / l * alpha;
+            d.x -= x *= l;
+            d.y -= y *= l;
+            quad.point.x += x;
+            quad.point.y += y;
+          }
+        }
+        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+      });
+    };
+  }
+}
+
+function updateNodes3(){
+  $("svg").remove();
+  updateGrouping(2);
+  nodes = datCar.map(function(d,e) {
+    if(datCar[e].iave == "SI") {
+      datCar[e].iave = 1;
+    }else{
+      datCar[e].iave = 0;
+    }
+    if(datCar[e].publico == "true") {
+      datCar[e].publico = 1;
+    }else{
+      datCar[e].publico = 0;
+    }
+    return { // agrupa por publico/privado   color= iave
+      radius: datCar[e].precio_km*10,
+      nombre: datCar[e].autopista,
+      typeColor: color3(datCar[e].iave),
+      cx: xPosGroup(datCar[e].publico),
+      cy: height / 2,
+      tooltip: datCar[e].autopista 
+
+    };
+  });
+  function updateGrouping(cantidad) {
+    xPosGroup.domain(d3.range(cantidad))
+      .rangePoints([0, width], 1);
+  }
+  var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(0)
+    .charge(0)
+    .on("tick", tick)
+    .start();
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+  var mainNode = svg.selectAll(".mainNode")
+    .data(nodes)
+    .enter().append("g")
+    .attr("class","mainNode")
+    .append("circle")
+    .attr("r", function(d) { return d.radius; })
+    .attr("id",function(d) { return d.nombre; })
+    .style("fill", function(d) { return d.typeColor; })
+    .on('mouseover', tip.show)
+  .on('mouseout', tip.hide);
+
+  function tick(e) {
+    svg.selectAll("g")
+      .each(gravity(.05 * e.alpha))
+      .each(collide(.1))
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")";
+      });
+  }
+  //updateNodes1();
+  // Move nodes toward cluster focus.
+  function gravity(alpha) {
+    return function(d) {
+      d.y += (d.cy - d.y) * alpha;
+      d.x += (d.cx - d.x) * alpha;
+    };
+  }
+  // Resolve collisions between nodes.
+  function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function(d) {
+      var r = d.radius + maxRadius + padding,
+          nx1 = d.x - r,
+          nx2 = d.x + r,
+          ny1 = d.y - r,
+          ny2 = d.y + r;
+      quadtree.visit(function(quad, x1, y1, x2, y2) {
+        if (quad.point && (quad.point !== d)) {
+          var x = d.x - quad.point.x,
+              y = d.y - quad.point.y,
+              l = Math.sqrt(x * x + y * y),
+              r = d.radius + quad.point.radius + (d.color !== quad.point.color) * padding;
+          if (l < r) {
+            l = (l - r) / l * alpha;
+            d.x -= x *= l;
+            d.y -= y *= l;
+            quad.point.x += x;
+            quad.point.y += y;
+          }
+        }
+        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+      });
+    };
+  }
+}
+    </script>
+
+
+  </body>
+</html>
