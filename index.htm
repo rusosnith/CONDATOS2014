@@ -61,6 +61,7 @@ form {
 }
 </style>
 
+ 
   </head>
   <body>
     <script src="d3.v3.min.js"></script>
@@ -68,18 +69,18 @@ form {
     <script src="d3.tip.js"></script>
     <center><h1 > CASETO-MATIC</h2></center>
     <form>
-      <input name="updateButton1" 
-                 type="button" 
-                value="IAVE, Color: precio/km, Radio: longitud" 
-                onclick="updateNodes1()" />
-      <input name="updateButton2" 
-                 type="button" 
-                value="IAVE, Color: Operador, Radio: Precio/km" 
-                onclick="updateOne()" />
-      <input name="updateButton3" 
-                 type="button" 
-                value="Pub-Priv, Color: IAve, Radio: Precio/km" 
-                onclick="updateTwo()" />
+      <label><input name="tipoDeGraf" 
+                 type="radio" 
+                value="1" 
+                onclick="updateNodes(1)" checked />IAVE, Color: precio/km, Radio: longitud</label>
+      <label><input name="tipoDeGraf" 
+                 type="radio" 
+                value="2" 
+                onclick="updateNodes(2)" />IAVE, Color: Operador, Radio: Precio/km</label>
+      <label><input name="tipoDeGraf"
+                 type="radio" 
+                value="3" 
+                onclick="updateNodes(3)" />Pub-Priv, Color: IAve, Radio: Precio/km</label>
     </form>
 
     <script>
@@ -87,84 +88,80 @@ var width = 960,
   height = 400,
   padding = 30, // separation between nodes
   maxRadius = 50;
-var color = d3.scale.category20();
+
 var opcion;
-var color2 = d3.scale.linear()
+var color = d3.scale.category20(); // 20 colores
+
+var color2 = d3.scale.linear()  // 2 colores entre 0 y 1
     .domain([0,1])
     .range(["blue","red"]);
-
 
 
 var color3 = d3.scale.linear() // VER SI PODEMOS SACAR EL MIN Y EL MAX DE UN SUBARRAY
     .domain([1,2.5])
     .range(["blue","red"]);
 
+var xPosGroup = d3.scale.ordinal(); // posicion en eje X para agrupar
 
-var xPosGroup = d3.scale.ordinal();
-updateGrouping(2);
+
+
 
 
 var nodes;
 
 function updateNodes(opcion){
-  
-nodes = datCar.map(function(d,e) {
-  if(datCar[e].iave == "SI") {
-    datCar[e].iave = 1;
-  }else{
-    datCar[e].iave = 0;
-  }
+ 
+    nodes = datCar.map(function(d,e) {
+            if(datCar[e].iave == "SI") {
+              datCar[e].iave = 1;
+            }else{
+              datCar[e].iave = 0;
+            }
 
-  if(datCar[e].publico == "true") {
-    datCar[e].publico = 1;
-  }else{
-    datCar[e].publico = 0;
-  }
+            if(datCar[e].publico == "true") {
+              datCar[e].publico = 1;
+            }else{
+              datCar[e].publico = 0;
+            }
 
-  // return { // agrupa por iave si/no  color =precio/k 
-  //   radius: 10,
-  //   nombre: datCar[e].autopista,
-  //   typeColor: color3(datCar[e].precio_km),
-  //   cx: xPosGroup(datCar[e].iave),
-  //   cy: height / 2
-  // };
-switch (opcion){
-  case 1:
+            switch (opcion){
+              case 1:
+                updateGrouping(2);
+                return { // agrupa por iave si/no  color =precio/k 
+                  radius: datCar[e].longitud_km/5,
+                  nombre: datCar[e].autopista,
+                  typeColor: color3(datCar[e].precio_km),
+                  cx: xPosGroup(datCar[e].publico),
+                  cy: height / 2,
+                  tooltip: datCar[e].autopista + "<BR> Operador:" + datCar[e].operador
+                };
+                break;
 
-  return { // agrupa por iave si/no  color =precio/k 
-    radius: datCar[e].longitud_km/5,
-    nombre: datCar[e].autopista,
-    typeColor: color3(datCar[e].precio_km),
-    cx: xPosGroup(datCar[e].publico),
-    cy: height / 2,
-    tooltip: datCar[e].autopista + "<BR> Operador:" + datCar[e].operador
-  };
-  break;
-
- case 2:
-
-  return { // agrupa por iave si/no  color =operador 
-    radius: datCar[e].precio_km*10,
-    nombre: datCar[e].autopista,
-    typeColor: color(datCar[e].operador),
-    cx: xPosGroup(datCar[e].iave),
-    cy: height / 2,
-    tooltip: datCar[e].autopista + "<BR> Publico:" + datCar[e].publico
-  }; 
-  break;
-    case 3:
-
-   return { // agrupa por publico/privado   color= iave
-    radius: datCar[e].precio_km*10,
-    nombre: datCar[e].autopista,
-    typeColor: color2(datCar[e].iave),
-    cx: xPosGroup(datCar[e].operador),
-    cy: height / 2,
-    tooltip: datCar[e].autopista + " Es Publico?:" + datCar[e].publico
-  }; 
-break;
-}
-});
+              case 2:
+                updateGrouping(2);
+                return { // agrupa por iave si/no  color =operador 
+                  radius: datCar[e].precio_km*10,
+                  nombre: datCar[e].autopista,
+                  typeColor: color(datCar[e].operador),
+                  cx: xPosGroup(datCar[e].iave),
+                  cy: height / 2,
+                  tooltip: datCar[e].autopista + "<BR> Publico:" + datCar[e].publico
+                }; 
+                break;
+              
+              case 3:
+                updateGrouping(2);
+                return { // agrupa por publico/privado   color= iave
+                  radius: datCar[e].precio_km*10,
+                  nombre: datCar[e].autopista,
+                  typeColor: color2(datCar[e].iave),
+                  cx: xPosGroup(datCar[e].operador),
+                  cy: height / 2,
+                  tooltip: datCar[e].autopista + " Es Publico?:" + datCar[e].publico
+                }; 
+                break;
+            }
+    });
 }
 
 updateNodes(1);
