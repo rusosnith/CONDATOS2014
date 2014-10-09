@@ -108,9 +108,8 @@ var xPosGroup = d3.scale.ordinal(); // posicion en eje X para agrupar
 
 
 var nodes;
-
+var firstTime = 0;
 function updateNodes(opcion){
- 
     nodes = datCar.map(function(d,e) {
             if(datCar[e].iave == "SI") {
               datCar[e].iave = 1;
@@ -138,9 +137,9 @@ function updateNodes(opcion){
                 break;
 
               case 2:
-                updateGrouping(2);
+               updateGrouping(2);
                 return { // agrupa por iave si/no  color =operador 
-                  radius: datCar[e].precio_km*10,
+                  radius: datCar[e].precio_km/5,
                   nombre: datCar[e].autopista,
                   typeColor: color(datCar[e].operador),
                   cx: xPosGroup(datCar[e].iave),
@@ -162,6 +161,33 @@ function updateNodes(opcion){
                 break;
             }
     });
+
+    var force = d3.layout.force()
+        .nodes(nodes)
+        .size([width, height])
+        .gravity(0)
+        .charge(0)
+        .on("tick", tick)
+        .start();
+
+  if(firstTime){
+
+//    mainNode = mainNode.data(nodes, function(d) { return d; });
+        // Since this is created before enter.append, it only applies to updating nodes.
+        svg.selectAll("g").each(function(d,i) {
+           d.cx = nodes[i].cx;
+           d.radius = nodes[i].radius;
+           d.typeColor = nodes[i].typeColor;
+        })
+        .transition()
+        .duration(450)
+        .selectAll("circle")
+        .attr("r", function(d) { return d.radius; })
+        .style("fill", function(d) { return d.typeColor; });
+      };
+
+
+    firstTime =1;
 }
 
 updateNodes(1);
@@ -184,28 +210,6 @@ var tip = d3.tip()
 
 
 
-
-
-
-// var nodes2 = datCar.map(function(d,e) {
-
-//   return {
-//     radius: datCar[e].precio_km,
-//     nombre: datCar[e].autopista,
-//     typeColor: datCar[e].operador,
-//     cx: xPosGroup(datCar[e].operador),
-//     cy: height / 2
-//   };
-// });
-
-var force = d3.layout.force()
-  .nodes(nodes)
-  .size([width, height])
-  .gravity(0)
-  .charge(0)
-  .on("tick", tick)
-  .start();
-
 var svg = d3.select("body").append("svg")
   .attr("width", width)
   .attr("height", height);
@@ -219,7 +223,7 @@ var mainNode = svg.selectAll(".mainNode")
   .attr("class","mainNode")
   .append("circle")
   .attr("r", function(d) { return d.radius; })
-  .attr("id",function(d) { return d.nombre; })
+  .attr("id",function(d,i) { return i + d.nombre; })
   .style("fill", function(d) { return d.typeColor; })
   .on('mouseover', tip.show)
   .on('mouseout', tip.hide);
@@ -229,44 +233,7 @@ var mainNode = svg.selectAll(".mainNode")
   //   .style("text-anchor","middle")
   //   .text(function(d) { return d.autopista; });
 
-function updateOne() {
 
-updateNodes(3);
-
-  mainNode = mainNode.data(nodes, function(d) { return d; });
-  // Since this is created before enter.append, it only applies to updating nodes.
-  svg.selectAll("g").each(function( d,i) {
-     d.cx = nodes[i].cx;
-     d.radius = nodes[i].radius;
-     d.typeColor = nodes[i].typeColor;
-  })
-  .transition()
-  .duration(450)
-  .selectAll("circle")
-  .attr("r", function(d) { return d.radius; })
-  .style("fill", function(d) { return d.typeColor; })
-  force.start();
-};
-
-function updateTwo() {
-
-updateNodes(3);
-
-  mainNode = mainNode.data(nodes, function(d) { return d; });
-
-  // Since this is created before enter.append, it only applies to updating nodes.
-  svg.selectAll("g").each(function( d,i) {
-     d.cx = nodes[i].cx;
-     d.radius = nodes[i].radius;
-     d.typeColor = nodes[i].typeColor;
-  })
-  .transition()
-  .duration(450)
-  .selectAll("circle")
-  .attr("r", function(d) { return d.radius; })
-  .style("fill", function(d) { return d.typeColor; })
-  force.start();
-};
 
 function tick(e) {
   svg.selectAll("g")
